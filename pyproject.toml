@@ -1,0 +1,25 @@
+[project]
+name = "jepa-exp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "datasets>=5.0.0",
+    "dotenv>=0.9.9",
+    "numpy>=2.2.6",
+    "torch>=2.12.0",
+    "torchvision>=0.27.0",
+    "tqdm>=4.68.2",
+    "transformers>=5.12.1",
+    "wandb>=0.27.2",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true  # Prevents uv from using this index for standard packages
+
+[tool.uv.sources]
+torch = [ { index = "pytorch-cu126" } ]
+torchvision = [ { index = "pytorch-cu126" } ]
