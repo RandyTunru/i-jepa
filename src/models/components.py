@@ -96,7 +96,7 @@ if __name__ == "__main__":
     d_ff = 64
 
     x = torch.randn(batch_size, seq_length, d_model)
-    mask = torch.ones(batch_size, seq_length).bool()  # No masking
+    mask = torch.ones(seq_length, seq_length).bool()  # No masking (also can just pass None)
 
     block = Block(d_model, num_heads, d_ff)
     output = block(x, mask=mask)
