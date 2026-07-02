@@ -43,4 +43,4 @@ if __name__ == "__main__":
     output = model(x)
 
     print("Input shape:", x.shape)
-    print("Output shape:", output.shape)
+    print("Output shape:", output.shape) # Should be (batch_size, num_patches, hidden_dim) where num_patches = (height/16)*(width/16)
