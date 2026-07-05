@@ -16,7 +16,7 @@ class MultiHeadAttention(nn.Module):
         self.linear_v = nn.Linear(d_model, d_model, bias=False)
         self.linear_out = nn.Linear(d_model, d_model, bias=False)
         
-    def forward(self, x, mask=None):
+    def forward(self, x):
         batch_size = x.size(0)
         
         # Linear projections
@@ -34,7 +34,7 @@ class MultiHeadAttention(nn.Module):
         # attn_output = torch.matmul(attn_weights, v)
 
         # Optimized attention computation using PyTorch's built-in function
-        attn_output = F.scaled_dot_product_attention(q, k, v, is_causal=False, attn_mask=mask)
+        attn_output = F.scaled_dot_product_attention(q, k, v, is_causal=False)
         
         # Concatenate heads and pass through final linear layer
         attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
@@ -78,8 +78,8 @@ class Block(nn.Module):
         self.norm2 = RMSNorm(d_model)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, mask=None):
-        attn_output = self.attention(self.norm1(x), mask=mask)
+    def forward(self, x):
+        attn_output = self.attention(self.norm1(x))
         x = x + self.dropout(attn_output)
 
         ffn_output = self.ffn(self.norm2(x))

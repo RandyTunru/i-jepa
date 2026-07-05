@@ -12,7 +12,7 @@ class ViTEncoder(nn.Module):
             Block(hidden_dim, num_heads, d_ff) for _ in range(num_layers)
         ])
 
-    def forward(self, x, mask=None):
+    def forward(self, x, keep_indices=None):
         assert x.dim() == 4, "Input must be a 4D tensor (batch_size, channels, height, width)"
         assert x.size(2) % 16 == 0 and x.size(3) % 16 == 0, "Height and width must be divisible by 16"
 
@@ -22,8 +22,14 @@ class ViTEncoder(nn.Module):
 
         x = x + self.pos_embedding[:, :x.size(1), :]
 
+        if keep_indices is not None:
+            # keep_indices shape: (batch_size, num_kept_patches)
+            # torch.gather to pluck out only the tokens we want to keep
+            expanded_indices = keep_indices.unsqueeze(-1).expand(-1, -1, x.size(-1))
+            x = torch.gather(x, dim=1, index=expanded_indices)
+
         for layer in self.layers:
-            x = layer(x, mask=mask)
+            x = layer(x)
 
         return x
     
