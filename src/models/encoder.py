@@ -7,6 +7,7 @@ class ViTEncoder(nn.Module):
     def __init__(self, in_channels=3, d_model=768, d_ff=3072, num_heads=12, num_layers=12, max_seq_len=36):
         super(ViTEncoder, self).__init__()
         self.conv = nn.Conv2d(in_channels, d_model, kernel_size=16, stride=16)
+        # The actual I-JEPA uses the sinusoidal positional embeddings. For simplicity, i chose to use learnable positional embeddings instead.
         self.pos_embedding = nn.Parameter(torch.zeros(1, max_seq_len, d_model))
         self.layers = nn.ModuleList([
             Block(d_model, num_heads, d_ff) for _ in range(num_layers)
