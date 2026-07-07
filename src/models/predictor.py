@@ -18,6 +18,10 @@ class ViTPredictor(nn.Module):
         ])
         self.norm = RMSNorm(predictor_dim)
 
+        # Project predictions back up to the encoder dimension so they can be
+        # compared against the (encoder_dim-wide) target encoder representations.
+        self.predictor_proj = nn.Linear(predictor_dim, encoder_dim)
+
         # I-JEPA initializes the mask token and position embeddings from a
         # truncated normal (std 0.02) rather than large-variance randn.
         nn.init.trunc_normal_(self.mask_token, std=0.02)
@@ -79,7 +83,10 @@ class ViTPredictor(nn.Module):
 
         # Extract only the predictions, which are appended at the end of the sequence
         predictions = x[:, -num_targets:, :]
-        
+
+        # Map back up to encoder_dim to match the target representations
+        predictions = self.predictor_proj(predictions)
+
         return predictions
     
 if __name__ == "__main__":
@@ -118,4 +125,4 @@ if __name__ == "__main__":
 
     print("Context tokens shape:", tuple(context_tokens.shape))
     print("Context / target:    ", num_context, "/", num_target)
-    print("Predictions shape:   ", tuple(predictions.shape))  # (B, num_target, predictor_dim)
+    print("Predictions shape:   ", tuple(predictions.shape))  # (B, num_target, encoder_dim)
