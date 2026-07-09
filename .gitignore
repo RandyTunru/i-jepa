@@ -13,3 +13,5 @@ wheels/
 artifacts/
 logs/
 /data/
+
+/*.png
