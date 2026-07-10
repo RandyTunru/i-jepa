@@ -18,8 +18,17 @@ class ViTEncoder(nn.Module):
         nn.init.trunc_normal_(self.pos_embedding, std=0.02)
 
     def forward(self, x, keep_indices=None):
+        """
+        Args:
+            x: (batch_size, channels, height, width)
+            keep_indices: (batch_size, num_kept_patches) or None
+        Returns:
+            tokens: (batch_size, num_kept_patches, d_model)
+        """
         assert x.dim() == 4, "Input must be a 4D tensor (batch_size, channels, height, width)"
         assert x.size(2) % 16 == 0 and x.size(3) % 16 == 0, "Height and width must be divisible by 16"
+        assert keep_indices.size(0) == x.size(0), "keep_indices batch size must match input batch size"
+        assert keep_indices.size(1) <= (x.size(2) // 16) * (x.size(3) // 16), "keep_indices length must not exceed number of patches"
 
         # Apply convolution to get patch embeddings
         x = self.conv(x)  # (batch_size, d_model, height/16, width/16)
