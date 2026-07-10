@@ -69,8 +69,9 @@ def main(config_path):
         model.load_state_dict(checkpoint['model_state_dict'], strict=True)
 
         if config.get('is_resume', False):
-            if ['optimizer_state_dict', 'generator_state_dict', 'step'] not in checkpoint:
-                raise ValueError("is_resume=True but the checkpoint has no optimizer_state_dict or generator_state_dict or step. Cannot resume training.")
+            missing = [k for k in ['optimizer_state_dict', 'generator_state_dict', 'step'] if k not in checkpoint]
+            if missing:
+                raise ValueError(f"is_resume=True but the checkpoint is missing: {missing}")
 
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
