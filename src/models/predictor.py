@@ -19,7 +19,7 @@ class ViTPredictor(nn.Module):
         self.norm = RMSNorm(predictor_dim)
 
         # Project predictions back up to the encoder dimension so they can be
-        # compared against the (encoder_dim-wide) target encoder representations.
+        # compared against the (encoder_dim) target encoder representations.
         self.predictor_proj = nn.Linear(predictor_dim, encoder_dim)
 
         # I-JEPA initializes the mask token and position embeddings from a
@@ -29,16 +29,21 @@ class ViTPredictor(nn.Module):
 
     def forward(self, context_tokens, context_indices, target_indices):
         """
+        Each target block is predicted independently: the context is replicated
+        once per block, and a block's mask tokens only ever attend to the context
+        and to each other, never to another block's mask tokens.
+
         Args:
             context_tokens: Shape (batch_size, num_context_patches, encoder_dim)
             context_indices: Shape (batch_size, num_context_patches)
-            target_indices: Shape (batch_size, num_target_patches)
+            target_indices: Shape (batch_size, num_blocks, block_size)
+        Returns:
+            predictions: Shape (batch_size, num_blocks, block_size, encoder_dim)
         """
-        batch_size = context_tokens.size(0)
-        num_targets = target_indices.size(1)
+        batch_size, num_blocks, block_size = target_indices.shape
 
         # Map context down to predictor dimension
-        context_tokens = self.proj(context_tokens) 
+        context_tokens = self.proj(context_tokens)
 
         """
         The positional embeddings are added to both the context and mask tokens.
@@ -51,19 +56,30 @@ class ViTPredictor(nn.Module):
         # Gather and add positional embeddings for the context tokens
         expanded_ctx_indices = context_indices.unsqueeze(-1).expand(-1, -1, self.predictor_dim)
         context_pos_emb = torch.gather(
-            self.pos_embedding.expand(batch_size, -1, -1), 
-            dim=1, 
+            self.pos_embedding.expand(batch_size, -1, -1),
+            dim=1,
             index=expanded_ctx_indices
         )
         context_tokens = context_tokens + context_pos_emb
 
-        mask_tokens = self.mask_token.expand(batch_size, num_targets, -1)
-        
+        """
+        Replicate the context once per target block and fold the block axis into
+        the batch axis, so the (batch_size * num_blocks) rows each hold the same
+        context paired with exactly one block's mask tokens. This is how the
+        reference implementation runs a per-block prediction in a single pass.
+        """
+        num_context = context_tokens.size(1)
+        context_tokens = context_tokens.repeat_interleave(num_blocks, dim=0) # (B * num_blocks, num_context, predictor_dim)
+
+        flat_tgt_indices = target_indices.reshape(batch_size * num_blocks, block_size)
+
+        mask_tokens = self.mask_token.expand(batch_size * num_blocks, block_size, -1)
+
         # Gather and add positional embeddings for the target masks
-        expanded_tgt_indices = target_indices.unsqueeze(-1).expand(-1, -1, self.predictor_dim)
+        expanded_tgt_indices = flat_tgt_indices.unsqueeze(-1).expand(-1, -1, self.predictor_dim)
         target_pos_emb = torch.gather(
-            self.pos_embedding.expand(batch_size, -1, -1), 
-            dim=1, 
+            self.pos_embedding.expand(batch_size * num_blocks, -1, -1),
+            dim=1,
             index=expanded_tgt_indices
         )
         mask_tokens = mask_tokens + target_pos_emb
@@ -74,7 +90,7 @@ class ViTPredictor(nn.Module):
         Also since the model is using full self-attention and not causal attention, the model can attend to all context tokens when predicting the masked tokens.
         Hence the order of the tokens in the sequence does not matter as long as the positional embeddings are correctly applied.
         """
-        x = torch.cat([context_tokens, mask_tokens], dim=1) # Shape: (batch_size, num_context + num_targets, predictor_dim)
+        x = torch.cat([context_tokens, mask_tokens], dim=1) # Shape: (B * num_blocks, num_context + block_size, predictor_dim)
 
         for layer in self.layers:
             x = layer(x)
@@ -82,38 +98,41 @@ class ViTPredictor(nn.Module):
         x = self.norm(x)
 
         # Extract only the predictions, which are appended at the end of the sequence
-        predictions = x[:, -num_targets:, :]
+        predictions = x[:, num_context:, :]
 
         # Map back up to encoder_dim to match the target representations
         predictions = self.predictor_proj(predictions)
 
-        return predictions
+        # Unfold the block axis back out of the batch axis
+        return predictions.view(batch_size, num_blocks, block_size, -1)
     
 if __name__ == "__main__":
     # Sanity-check the ViTPredictor with a coherent I-JEPA masking split.
     
     """
-    The 36 patches are partitioned (per sample) into a disjoint context set
-    and target set via a random permutation, so no patch is both context and
-    target. The predictor consumes the context encoder's output and predicts
-    the target-patch representations from learnable mask tokens.
+    The 36 patches are partitioned (per sample) into a disjoint context set and
+    a set of target blocks, so no patch is both context and target. The predictor
+    consumes the context encoder's output and predicts each target block's patch
+    representations from learnable mask tokens, one block per forward row.
     """
-    
+
     batch_size = 2
     num_patches = 36
     encoder_dim = 32   # must match the encoder's d_model
-    predictor_dim = 16 # narrower than the encoder, as in I-JEPA
+    predictor_dim = 16 # The implementation uses a narrower dimension in the predictor
     d_ff = 4 * predictor_dim
     num_heads = 4
     num_layers = 4
 
     num_context = 18
-    num_target = 8
+    num_blocks = 4
+    block_size = 4
 
-    # Disjoint context / target indices per sample.
+    # Disjoint context / target indices per sample; targets split into blocks.
     perms = torch.stack([torch.randperm(num_patches) for _ in range(batch_size)])
     context_indices = perms[:, :num_context]
-    target_indices = perms[:, num_context:num_context + num_target]
+    target_indices = perms[:, num_context:num_context + num_blocks * block_size]
+    target_indices = target_indices.view(batch_size, num_blocks, block_size)
 
     # Stand-in for the context encoder's output (encoder_dim wide).
     context_tokens = torch.randn(batch_size, num_context, encoder_dim)
@@ -124,5 +143,6 @@ if __name__ == "__main__":
     predictions = model(context_tokens, context_indices, target_indices)
 
     print("Context tokens shape:", tuple(context_tokens.shape))
-    print("Context / target:    ", num_context, "/", num_target)
-    print("Predictions shape:   ", tuple(predictions.shape))  # (B, num_target, encoder_dim)
+    print("Context patches:     ", num_context)
+    print("Target blocks:       ", num_blocks, "x", block_size, "patches")
+    print("Predictions shape:   ", tuple(predictions.shape))  # (B, num_blocks, block_size, encoder_dim)
