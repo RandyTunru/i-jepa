@@ -27,8 +27,8 @@ class IJEPA(nn.Module):
     def train(self, mode=True):
         """
         Keep the target encoder in eval mode even while training.
-        The purpose of this is to ensure that the target encoder's batch norm (if any) and dropout (if any) behave consistently during training, 
-        as it is not updated via backpropagation.
+        The purpose of this is to ensure that the target encoder's batch norm (if any) and dropout (if any) behave consistently during training.
+        We can't make let the target encoder have an active dropout because the target encoder is used to generate the targets for the predictor, and we want those targets to be deterministic and not stochastic.
         """
         super().train(mode)
         self.target_encoder.eval()
