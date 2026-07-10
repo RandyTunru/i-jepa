@@ -77,19 +77,37 @@ class IJEPA(nn.Module):
 
 if __name__ == "__main__":
     # End-to-end sanity check on a single I-JEPA step.
+    import argparse
+    import yaml
     from src.utils.masking import MultiBlockMasking
 
-    batch_size = 2
-    grid_size = 6
-    num_patches = grid_size * grid_size  # 36
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='configs/stl10_ijepa_classifier.yaml', help='Path to the training configuration YAML file')
 
-    encoder_kwargs = dict(in_channels=3, d_model=32, d_ff=128, num_heads=4,
-                          num_layers=4, max_seq_len=num_patches)
-    predictor_kwargs = dict(encoder_dim=32, predictor_dim=16, d_ff=64, num_heads=4,
-                            num_layers=4, max_seq_len=num_patches)
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+
+    batch_size = config['batch_size']
+    patch_size = config['patch_size']
+    config['grid_size'] = config['image_size'] // patch_size
+    config['max_seq_len'] = config['grid_size'] ** 2
+
+    encoder_kwargs = dict(
+        in_channels=config['in_channels'], patch_size=config['patch_size'],
+        d_model=config['encoder_d_model'], d_ff=config['encoder_d_ff'], num_heads=config['encoder_num_heads'],
+        num_layers=config['encoder_num_layers'], max_seq_len=config['max_seq_len'],
+        dropout=config['encoder_dropout'],
+    )
+    predictor_kwargs = dict(
+        encoder_dim=config['encoder_d_model'], predictor_dim=config['predictor_d_model'], d_ff=config['predictor_d_ff'], num_heads=config['predictor_num_heads'],
+        num_layers=config['predictor_num_layers'], max_seq_len=config['max_seq_len'],
+        dropout=config['predictor_dropout'],
+    )
 
     model = IJEPA(encoder_kwargs, predictor_kwargs)
-    masker = MultiBlockMasking(grid_size=grid_size, generator=torch.Generator().manual_seed(0))
+    masker = MultiBlockMasking(grid_size=config['grid_size'], generator=torch.Generator().manual_seed(0))
 
     imgs = torch.randn(batch_size, 3, 96, 96)
     ctx_idx, tgt_idx = masker(batch_size, device="cpu")
