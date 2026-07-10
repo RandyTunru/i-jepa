@@ -4,8 +4,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from src.models.encoder import ViTEncoder
-from src.models.predictor import ViTPredictor
+from src.models.modules.encoder import ViTEncoder
+from src.models.modules.predictor import ViTPredictor
 
 
 class IJEPA(nn.Module):

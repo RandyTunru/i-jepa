@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.components import Block, RMSNorm
+from src.models.modules.components import Block, RMSNorm
 
 class ViTPredictor(nn.Module):
     def __init__(self, encoder_dim=768, predictor_dim=384, d_ff=1536, num_heads=6, num_layers=6, max_seq_len=36, dropout=0.0):
