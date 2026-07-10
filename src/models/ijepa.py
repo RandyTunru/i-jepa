@@ -24,6 +24,16 @@ class IJEPA(nn.Module):
         """Parameters the optimizer should own (excludes the EMA target)."""
         return list(self.context_encoder.parameters()) + list(self.predictor.parameters())
 
+    def train(self, mode=True):
+        """
+        Keep the target encoder in eval mode even while training.
+        The purpose of this is to ensure that the target encoder's batch norm (if any) and dropout (if any) behave consistently during training, 
+        as it is not updated via backpropagation.
+        """
+        super().train(mode)
+        self.target_encoder.eval()
+        return self
+
     def forward(self, imgs, context_indices, target_indices):
         """
         Args:

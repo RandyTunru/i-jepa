@@ -4,7 +4,7 @@ from torch import nn
 from src.models.components import Block, RMSNorm
 
 class ViTPredictor(nn.Module):
-    def __init__(self, encoder_dim=768, predictor_dim=384, d_ff=1536, num_heads=6, num_layers=6, max_seq_len=36):
+    def __init__(self, encoder_dim=768, predictor_dim=384, d_ff=1536, num_heads=6, num_layers=6, max_seq_len=36, dropout=0.0):
         super(ViTPredictor, self).__init__()
         self.predictor_dim = predictor_dim
         self.proj = nn.Linear(encoder_dim, predictor_dim) # Linear projection to downsample from the wider encoder dimension to the narrower predictor dimension
@@ -14,7 +14,7 @@ class ViTPredictor(nn.Module):
         self.pos_embedding = nn.Parameter(torch.zeros(1, max_seq_len, predictor_dim)) # Positional embeddings for the predictor
 
         self.layers = nn.ModuleList([
-            Block(predictor_dim, num_heads, d_ff) for _ in range(num_layers)
+            Block(predictor_dim, num_heads, d_ff, dropout=dropout) for _ in range(num_layers)
         ])
         self.norm = RMSNorm(predictor_dim)
 

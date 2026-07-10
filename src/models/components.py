@@ -70,7 +70,7 @@ class RMSNorm(nn.Module):
         return norm_x * self.weight
 
 class Block(nn.Module):
-    def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
+    def __init__(self, d_model, num_heads, d_ff, dropout=0.0):
         super(Block, self).__init__()
         self.attention = MultiHeadAttention(d_model, num_heads)
         self.ffn = PositionwiseFeedForward(d_model, d_ff)
