@@ -23,8 +23,8 @@ class Trainer:
 
         self.monitor = ThroughputMonitor(config['batch_size'] * self.grad_accum_steps, config['max_seq_len'])
 
-        # Multi-block masking (batch-shared). A seeded generator keeps the mask
-        # stream deterministic so runs are reproducible and resumable.
+        # Multi-block masking: block sizes shared per batch, positions per image.
+        # A seeded generator keeps the mask stream deterministic across runs.
         mask_generator = torch.Generator().manual_seed(config.get('mask_seed', 0))
         self.masker = MultiBlockMasking(
             grid_size=config['grid_size'],
@@ -92,18 +92,18 @@ class Trainer:
                 except StopIteration:
                     if self.config['no_epochs']:
                         print("Dataset exhausted. Stopping training loop.")
-                        return
+                        return step
                     data_iter = iter(self.dataloader)
                     batch = next(data_iter)
 
                 # Dataset yields (B, H, W, C) in [0, 1]; the encoder expects (B, C, H, W).
                 imgs = batch.to(self.device).permute(0, 3, 1, 2).contiguous()
 
-                # Sample one block mask and broadcast it across the batch.
+                # Per-image block masks; block sizes are shared across the batch.
                 context_indices, target_indices = self.masker(imgs.size(0), self.device)
 
                 with ctx:
-                    # preds: (B, num_target, encoder_dim); targets are stop-grad.
+                    # preds: (B, num_blocks, block_size, encoder_dim); targets are stop-grad.
                     preds, targets = self.model(imgs, context_indices, target_indices)
 
                     # Regress predicted target representations onto the EMA targets.
@@ -144,11 +144,17 @@ class Trainer:
 
             step += 1
 
-    def save_checkpoint(self, step):
-        filepath = os.path.join(self.checkpoint_dir, f"model_step_{step}.pt")
+        return step
+
+    def save_checkpoint(self, step, label=None):
+        assert isinstance(step, int), f"step must be an int, got {type(step).__name__}"
+
+        name = label if label is not None else str(step)
+        filepath = os.path.join(self.checkpoint_dir, f"model_step_{name}.pt")
         checkpoint = {
             'model_state_dict': self.model.state_dict(),  # context + target encoders + predictor
             'optimizer_state_dict': self.optimizer.state_dict(),
+            "generator_state_dict": self.masker.generator.get_state(),
             'step': step,
             'config': self.config
         }
