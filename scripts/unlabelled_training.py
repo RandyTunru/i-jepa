@@ -8,7 +8,7 @@ import wandb
 
 from src.datasets.stl10_unlabelled_dataset import STL10UnlabelledDataset
 from src.models.ijepa import IJEPA
-from src.training.trainer import Trainer
+from src.training.unlabelled_trainer import Trainer
 
 
 def main(config_path):
