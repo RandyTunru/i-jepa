@@ -4,13 +4,14 @@ from torch import nn
 from src.models.components import Block
 
 class ViTEncoder(nn.Module):
-    def __init__(self, in_channels=3, d_model=768, d_ff=3072, num_heads=12, num_layers=12, max_seq_len=36):
+    def __init__(self, in_channels=3, patch_size=16, d_model=768, d_ff=3072, num_heads=12, num_layers=12, max_seq_len=36, dropout=0.0):
         super(ViTEncoder, self).__init__()
-        self.conv = nn.Conv2d(in_channels, d_model, kernel_size=16, stride=16)
+        self.patch_size = patch_size
+        self.conv = nn.Conv2d(in_channels, d_model, kernel_size=patch_size, stride=patch_size)
         # The actual I-JEPA uses the sinusoidal positional embeddings. For simplicity, i chose to use learnable positional embeddings instead.
         self.pos_embedding = nn.Parameter(torch.zeros(1, max_seq_len, d_model))
         self.layers = nn.ModuleList([
-            Block(d_model, num_heads, d_ff) for _ in range(num_layers)
+            Block(d_model, num_heads, d_ff, dropout=dropout) for _ in range(num_layers)
         ])
 
         # Small-variance init (std 0.02) keeps positional signal from
@@ -25,13 +26,17 @@ class ViTEncoder(nn.Module):
         Returns:
             tokens: (batch_size, num_kept_patches, d_model)
         """
+        p = self.patch_size
         assert x.dim() == 4, "Input must be a 4D tensor (batch_size, channels, height, width)"
-        assert x.size(2) % 16 == 0 and x.size(3) % 16 == 0, "Height and width must be divisible by 16"
-        assert keep_indices.size(0) == x.size(0), "keep_indices batch size must match input batch size"
-        assert keep_indices.size(1) <= (x.size(2) // 16) * (x.size(3) // 16), "keep_indices length must not exceed number of patches"
+        assert x.size(2) % p == 0 and x.size(3) % p == 0, f"Height and width must be divisible by patch_size ({p})"
+
+        # keep_indices is None on the target-encoder path, which sees every patch.
+        if keep_indices is not None:
+            assert keep_indices.size(0) == x.size(0), "keep_indices batch size must match input batch size"
+            assert keep_indices.size(1) <= (x.size(2) // p) * (x.size(3) // p), "keep_indices length must not exceed number of patches"
 
         # Apply convolution to get patch embeddings
-        x = self.conv(x)  # (batch_size, d_model, height/16, width/16)
+        x = self.conv(x)  # (batch_size, d_model, height/patch_size, width/patch_size)
         x = x.flatten(2).transpose(1, 2) # Flatten to (batch_size, d_model, num_patches) and transpose to (batch_size, num_patches, d_model)
 
         x = x + self.pos_embedding[:, :x.size(1), :]
@@ -59,8 +64,9 @@ if __name__ == "__main__":
 
     batch_size = 2
     in_channels = 3
+    patch_size = 16
     height = width = 96
-    num_patches = (height // 16) * (width // 16)  # 36
+    num_patches = (height // patch_size) * (width // patch_size)  # 36
 
     d_model = 32
     d_ff = 4 * d_model
@@ -68,8 +74,8 @@ if __name__ == "__main__":
     num_layers = 4
 
     x = torch.randn(batch_size, in_channels, height, width)
-    encoder = ViTEncoder(in_channels=in_channels, d_model=d_model, d_ff=d_ff,
-                         num_heads=num_heads, num_layers=num_layers,
+    encoder = ViTEncoder(in_channels=in_channels, patch_size=patch_size, d_model=d_model,
+                         d_ff=d_ff, num_heads=num_heads, num_layers=num_layers,
                          max_seq_len=num_patches)
 
     """
