@@ -1,0 +1,55 @@
+project_name: "i-jepa-stl10"
+run_name: "i-jepa-stl10-m-05"
+
+# --- Data / patch geometry ---
+in_channels: 3
+image_size: 96
+patch_size: 12 # The patch size must divide the image size evenly, and the grid size is derived from it.
+
+# --- Masking ---
+num_target_blocks: 4
+mask_seed: 0
+
+# --- Encoder ---
+encoder_d_model: 768
+encoder_d_ff: 3072
+encoder_num_heads: 12
+encoder_num_layers: 12
+# Keep dropout at 0.0, we don't want our target to be stochastic, the target should be a deterministic function of the context, so that the predictor can learn to predict it.
+# Current implementation does have a failsafe to disable dropout in the target encoder by manually setting the target to .eval(), but it's better to just not use it at all.
+encoder_dropout: 0.0 
+
+# --- Predictor (narrower and shallower than the encoder) ---
+predictor_d_model: 384
+predictor_d_ff: 1536
+predictor_num_heads: 12
+predictor_num_layers: 6
+predictor_dropout: 0.0
+
+# --- Optimization --- 
+batch_size: 64
+gradient_accumulation_steps: 1
+learning_rate: 5.0e-4
+weight_decay: 0.05
+warmup_steps: 5000
+max_steps: 100000
+
+# --- EMA target encoder momentum, cosine-ramped from start to end ---
+ema_start: 0.996
+ema_end: 1.0
+
+# --- Logging / IO ---
+log_every: 100
+save_every: 1000
+
+data_dir: "data/raw"
+wandb_dir: "logs"
+checkpoint_dir: "artifacts/checkpoints/ijepa-stl10-m"
+
+# --- Checkpoint loading ---
+from_checkpoint: null # Path to the chekpoint to load, not provided or null means from scratch
+is_resume: false # If true, resume training from the checkpoint, otherwise just load the model weights and start training from step 0
+
+num_workers: 4
+drop_last: true
+no_epochs: false
