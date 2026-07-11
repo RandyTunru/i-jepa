@@ -20,12 +20,13 @@ class STL10LabelledDataset(Dataset):
         end = start + self.per_image_value
 
         image = self.data[start:end].reshape((3, 96, 96))  # Reshape to (C, H, W)
-        image = np.transpose(image, (2, 1, 0))  # Convert to (H, W, C) format for image processing libraries
+        image = np.transpose(image, (2, 1, 0))  # Fix the column-major orientation -> (H, W, C)
 
-        tensor_image = torch.tensor(image, dtype=torch.float32) # Convert to a PyTorch tensor
-        label = int(self.labels[idx]) - 1 # Convert to zero-based index
+        tensor_image = torch.tensor(image, dtype=torch.float32) / 255.0  # Normalize to [0, 1]
+        label = int(self.labels[idx]) - 1  # Convert to zero-based index
 
-        return tensor_image / 255.0, label # Normalize pixel values to [0, 1] range and return label
+        # Return (C, H, W), the PyTorch-standard layout the models consume directly.
+        return tensor_image.permute(2, 0, 1).contiguous(), label
     
 if __name__ == "__main__":
     import argparse
@@ -42,8 +43,8 @@ if __name__ == "__main__":
     dataset = STL10LabelledDataset(args.data_path, args.labels_path)
     print(f"Total number of images in the dataset: {len(dataset)}")
     image, label = dataset[args.index]
-    print(f"Shape of the image at index {args.index}: {image.shape}, Label: {label}")
-    plt.imshow(image)
+    print(f"Shape of the image at index {args.index}: {image.shape}, Label: {label}")  # (C, H, W)
+    plt.imshow(image.permute(1, 2, 0))  # back to (H, W, C) for matplotlib
 
     plt.title(f"Image at index {args.index} with Label {label}")
     plt.axis('off')
@@ -57,7 +58,7 @@ if __name__ == "__main__":
         plt.figure(figsize=(12, 6))
         for i in range(min(args.batch_size, len(batch_images))):
             plt.subplot(2, args.batch_size // 2, i + 1)
-            plt.imshow(batch_images[i].numpy())
+            plt.imshow(batch_images[i].permute(1, 2, 0).numpy())  # (C, H, W) -> (H, W, C)
             plt.title(f"Label: {batch_labels[i].item()}")
             plt.axis('off')
         plt.suptitle("First Batch of Images with Labels")

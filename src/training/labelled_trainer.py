@@ -78,8 +78,8 @@ class Trainer:
 
                 imgs, labels = batch
 
-                # Dataset yields (B, H, W, C) in [0, 1]; the encoder expects (B, C, H, W).
-                imgs = imgs.to(self.device).permute(0, 3, 1, 2).contiguous()
+                # All datasets yield (B, C, H, W), the layout the encoder expects.
+                imgs = imgs.to(self.device).contiguous()
 
                 with ctx:
                     # Forward Pass
@@ -111,9 +111,14 @@ class Trainer:
                     val_steps = 0
                     all_preds, all_labels = [], []
 
-                    for val_batch in self.val_dataloader:
+                    # Cap the eval for large/streaming val sets; None => full pass.
+                    val_max_batches = self.config.get('val_max_batches')
+
+                    for vi, val_batch in enumerate(self.val_dataloader):
+                        if val_max_batches is not None and vi >= val_max_batches:
+                            break
                         val_imgs, val_labels = val_batch
-                        val_imgs = val_imgs.to(self.device).permute(0, 3, 1, 2).contiguous()
+                        val_imgs = val_imgs.to(self.device).contiguous()
                         val_labels = val_labels.to(self.device)
 
                         val_outputs = self.model(val_imgs)

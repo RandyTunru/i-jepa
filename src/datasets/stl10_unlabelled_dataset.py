@@ -21,10 +21,11 @@ class STL10UnlabelledDataset(Dataset):
         end = start + self.per_image_value
 
         image = self.data[start:end].reshape((3, 96, 96))  # Reshape to (C, H, W)
-        image = np.transpose(image, (2, 1, 0))  # Convert to (H, W, C) format for image processing libraries
+        image = np.transpose(image, (2, 1, 0))  # Fix the column-major orientation -> (H, W, C)
 
-        tensor_image = torch.tensor(image, dtype=torch.float32) # Convert to a PyTorch tensor
-        return tensor_image / 255.0 # Normalize pixel values to [0, 1] range
+        tensor_image = torch.tensor(image, dtype=torch.float32) / 255.0  # Normalize to [0, 1]
+        # Return (C, H, W), the PyTorch-standard layout the models consume directly.
+        return tensor_image.permute(2, 0, 1).contiguous()
     
 if __name__ == "__main__":
     import argparse
@@ -40,8 +41,8 @@ if __name__ == "__main__":
     dataset = STL10UnlabelledDataset(args.data_dir)
     print(f"Total number of images in the dataset: {len(dataset)}")
     image = dataset[args.index]
-    print(f"Shape of the image at index {args.index}: {image.shape}")
-    plt.imshow(image)
+    print(f"Shape of the image at index {args.index}: {image.shape}")  # (C, H, W)
+    plt.imshow(image.permute(1, 2, 0))  # back to (H, W, C) for matplotlib
 
     plt.title(f"Image at index {args.index}")
     plt.axis('off')
@@ -55,7 +56,7 @@ if __name__ == "__main__":
         plt.figure(figsize=(12, 6))
         for i in range(min(args.batch_size, len(batch))):
             plt.subplot(2, args.batch_size // 2, i + 1)
-            plt.imshow(batch[i].numpy())
+            plt.imshow(batch[i].permute(1, 2, 0).numpy())  # (C, H, W) -> (H, W, C)
             plt.axis('off')
         plt.suptitle("First Batch of Images")
         plt.savefig("first_batch.png")

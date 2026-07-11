@@ -96,8 +96,8 @@ class Trainer:
                     data_iter = iter(self.dataloader)
                     batch = next(data_iter)
 
-                # Dataset yields (B, H, W, C) in [0, 1]; the encoder expects (B, C, H, W).
-                imgs = batch.to(self.device).permute(0, 3, 1, 2).contiguous()
+                # All datasets yield (B, C, H, W), the layout the encoder expects.
+                imgs = batch.to(self.device).contiguous()
 
                 # Per-image block masks; block sizes are shared across the batch.
                 context_indices, target_indices = self.masker(imgs.size(0), self.device)
