@@ -1,17 +1,20 @@
 project_name: "i-jepa-stl10"
-run_name: "i-jepa-stl10-classifier-03"
+run_name: "i-jepa-stl10-m-classifier-06"
 
 # --- Data / patch geometry ---
 in_channels: 3
 image_size: 96
 patch_size: 8 # The patch size must divide the image size evenly, and the grid size is derived from it.
 num_classes: 10
+train_split_size: 0.8
 
 # --- Encoder ---
-encoder_d_model: 256
-encoder_d_ff: 512
-encoder_num_heads: 4
-encoder_num_layers: 6
+encoder_d_model: 768
+encoder_d_ff: 3072
+encoder_num_heads: 12
+encoder_num_layers: 12
+
+encoder_source: "target_encoder" # Either "target_encoder" or "context_encoder"
 
 # --- Optimization ---
 batch_size: 64
@@ -32,10 +35,10 @@ test_data_path: "data/raw/stl10_binary/test_X.bin"
 test_labels_path: "data/raw/stl10_binary/test_y.bin"
 
 wandb_dir: "logs"
-checkpoint_dir: "artifacts/checkpoints/ijepa-stl10-classifier"
+checkpoint_dir: "artifacts/checkpoints/ijepa-stl10-m-classifier"
 
 # --- Checkpoint loading ---
-from_checkpoint: "artifacts/checkpoints/ijepa-stl10/model_step_final.pt" # Path to the checkpoint to load, not provided or null means from scratch
+from_checkpoint: "artifacts/checkpoints/ijepa-stl10-m/model_step_final.pt" # Path to the checkpoint to load, not provided or null means from scratch
 is_resume: false # If true, resume training from the checkpoint, otherwise just load the model weights and start training from step 0
 
 num_workers: 4

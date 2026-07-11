@@ -1,5 +1,5 @@
 project_name: "i-jepa-stl10"
-run_name: "i-jepa-stl10"
+run_name: "i-jepa-stl10-m-06"
 
 # --- Data / patch geometry ---
 in_channels: 3
@@ -11,40 +11,40 @@ num_target_blocks: 4
 mask_seed: 0
 
 # --- Encoder ---
-encoder_d_model: 256
-encoder_d_ff: 512
-encoder_num_heads: 4
-encoder_num_layers: 6
+encoder_d_model: 768
+encoder_d_ff: 3072
+encoder_num_heads: 12
+encoder_num_layers: 12
 # Keep dropout at 0.0, we don't want our target to be stochastic, the target should be a deterministic function of the context, so that the predictor can learn to predict it.
 # Current implementation does have a failsafe to disable dropout in the target encoder by manually setting the target to .eval(), but it's better to just not use it at all.
 encoder_dropout: 0.0 
 
 # --- Predictor (narrower and shallower than the encoder) ---
-predictor_d_model: 128
-predictor_d_ff: 256
-predictor_num_heads: 4
-predictor_num_layers: 3
+predictor_d_model: 384
+predictor_d_ff: 1536
+predictor_num_heads: 12
+predictor_num_layers: 6
 predictor_dropout: 0.0
 
-# --- Optimization ---
+# --- Optimization --- 
 batch_size: 64
 gradient_accumulation_steps: 1
-learning_rate: 1.0e-3
+learning_rate: 5.0e-4
 weight_decay: 0.05
-warmup_steps: 500
-max_steps: 10000
+warmup_steps: 10000
+max_steps: 100000
 
 # --- EMA target encoder momentum, cosine-ramped from start to end ---
 ema_start: 0.996
 ema_end: 1.0
 
 # --- Logging / IO ---
-log_every: 100
-save_every: 1000
+log_every: 1000
+save_every: 5000
 
 data_dir: "data/raw"
 wandb_dir: "logs"
-checkpoint_dir: "artifacts/checkpoints/ijepa-stl10"
+checkpoint_dir: "artifacts/checkpoints/ijepa-stl10-m"
 
 # --- Checkpoint loading ---
 from_checkpoint: null # Path to the chekpoint to load, not provided or null means from scratch
