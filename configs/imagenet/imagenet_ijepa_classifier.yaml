@@ -1,0 +1,48 @@
+project_name: "i-jepa-imagenet"
+run_name: "i-jepa-imagenet-vit-b-classifier-01"
+
+# --- Data / patch geometry (must match the pretrained encoder) ---
+in_channels: 3
+image_size: 256
+patch_size: 16
+num_classes: 1000
+shuffle_buffer: 10000   # streaming train shuffle-buffer (val is streamed unshuffled)
+
+# --- Encoder ---
+encoder_d_model: 768
+encoder_d_ff: 3072
+encoder_num_heads: 12
+encoder_num_layers: 12
+
+encoder_source: "target_encoder"   # I-JEPA evaluates with the EMA target encoder
+
+# --- Optimization (linear probe) ---
+batch_size: 128
+gradient_accumulation_steps: 1
+learning_rate: 1.0e-3
+weight_decay: 0.0
+warmup_steps: 500
+max_steps: 10000        # ~1.28M / 128 = 10k steps = ~1 epoch of ImageNet train
+
+# --- Validation ---
+val_max_batches: 50     # Cap the number of validation batches to speed up evaluation; set to null for full validation
+
+# --- Logging / IO ---
+log_every: 500
+save_every: 2000
+
+wandb_dir: "logs"
+checkpoint_dir: "artifacts/checkpoints/ijepa-imagenet-classifier"
+
+# --- Checkpoint loading ---
+from_checkpoint: "artifacts/checkpoints/ijepa-imagenet/model_step_final.pt"
+is_resume: false
+
+num_workers: 8
+drop_last: true
+no_epochs: false
+
+# --- Data source ---
+# false (default): read the locally cached parquet (run scripts/imagenet_download.py --cache first to use).
+# true: stream from HuggingFace; no download.
+use_streaming: false
