@@ -28,7 +28,11 @@ class IJEPA(nn.Module):
         """
         Keep the target encoder in eval mode even while training.
         The purpose of this is to ensure that the target encoder's batch norm (if any) and dropout (if any) behave consistently during training.
-        We can't make let the target encoder have an active dropout because the target encoder is used to generate the targets for the predictor, and we want those targets to be deterministic and not stochastic.
+        We can't make let the target encoder have an active dropout because the target encoder is used to generate the targets for the predictor, 
+        And we want those targets to be deterministic and not stochastic.
+
+        This is separate from freezing the target encoder's parameters, which is done in the constructor by setting requires_grad=False for all its parameters.
+        That simply prevents the optimizer from updating the target encoder's weights, but it doesn't affect the behavior of layers like batch norm or dropout during training.
         """
         super().train(mode)
         self.target_encoder.eval()
