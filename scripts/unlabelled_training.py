@@ -9,6 +9,7 @@ import wandb
 from src.datasets.stl10_unlabelled_dataset import STL10UnlabelledDataset
 from src.models.ijepa import IJEPA
 from src.training.unlabelled_trainer import Trainer
+from src.utils.optim import param_groups_with_decay
 
 
 def main(config_path):
@@ -51,12 +52,10 @@ def main(config_path):
     )
     model = IJEPA(encoder_kwargs, predictor_kwargs).to(device)
 
-    optimizer = torch.optim.AdamW(
-        model.trainable_parameters(), # Only use trainable parameters (context encoder + predictor) for optimization; EMA target is updated separately.
-        lr=config['learning_rate'],
-        weight_decay=config['weight_decay'],
-        betas=(0.9, 0.95),
-    )
+    param_groups = param_groups_with_decay(model, lr=config['learning_rate'],
+                                           weight_decay=config['weight_decay'],
+                                           betas=(0.9, 0.95))
+    optimizer = torch.optim.AdamW(param_groups)
 
     # --- Checkpoint Loading ---
     start_step = 0

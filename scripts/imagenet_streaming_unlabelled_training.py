@@ -10,6 +10,7 @@ from src.datasets.imagenet_stream_dataset import ImageNetStreamDataset
 from src.datasets.imagenet_cached_dataset import ImageNetCachedDataset
 from src.models.ijepa import IJEPA
 from src.training.unlabelled_trainer import Trainer
+from src.utils.optim import param_groups_with_decay
 
 
 def main(config_path):
@@ -80,12 +81,15 @@ def main(config_path):
     )
     model = IJEPA(encoder_kwargs, predictor_kwargs).to(device)
 
-    optimizer = torch.optim.AdamW(
-        model.trainable_parameters(),  # context encoder + predictor; EMA target is updated separately
-        lr=config['learning_rate'],
-        weight_decay=config['weight_decay'],
-        betas=(0.9, 0.95),
-    )
+    # Standard ViT practice: exclude norm and bias parameters from weight decay.
+    # In I-JEPA this is critical: weight decay on the encoder's final norm pulls
+    # it toward zero, and the predictor absorbs the scale change, so the loss
+    # provides no counter-gradient — the encoder silently collapses while the
+    # training loss stays flat.
+    param_groups = param_groups_with_decay(model, lr=config['learning_rate'],
+                                           weight_decay=config['weight_decay'],
+                                           betas=(0.9, 0.95))
+    optimizer = torch.optim.AdamW(param_groups)
 
     # --- Checkpoint Loading ---
     start_step = 0
