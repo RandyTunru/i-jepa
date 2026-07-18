@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.modules.components import Block, RMSNorm
+from src.models.modules.components import Block
 
 class ViTEncoder(nn.Module):
     def __init__(self, in_channels=3, patch_size=16, d_model=768, d_ff=3072, num_heads=12, num_layers=12, max_seq_len=36, dropout=0.0):
@@ -14,10 +14,12 @@ class ViTEncoder(nn.Module):
             Block(d_model, num_heads, d_ff, dropout=dropout) for _ in range(num_layers)
         ])
 
-        # Blocks are pre-norm, so the last one returns the raw residual stream,
-        # which grows with depth. Every pre-norm ViT closes with a final norm.
-        # If not, the predictor and the linear probe both receive wildly out-of-scale features.
-        self.norm = RMSNorm(d_model)
+        # Blocks are pre-norm, so the last one returns the raw residual stream
+        # which grows with depth. Every ViT closes with a final norm.
+        # Following common implementations, I-JEPA uses LayerNorm for the final normalization of the encoder output. 
+        # This is important to ensure that the output representations are well-scaled and stable for downstream tasks.
+        # Technically can also use RMSNorm here, but LayerNorm is more standard for the final output of a transformer encoder.
+        self.norm = nn.LayerNorm(d_model) 
 
         # Small-variance init (std 0.02) keeps positional signal from
         # overwhelming the patch embeddings at the start of training.
