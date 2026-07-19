@@ -1,5 +1,5 @@
-project_name: "i-jepa-stl10"
-run_name: "i-jepa-stl10-classifier-06"
+project_name: "i-jepa-stl10-classifier"
+run_name: "i-jepa-stl10-classifier-optimized-02"
 
 # --- Data / patch geometry ---
 in_channels: 3
@@ -17,12 +17,12 @@ encoder_num_layers: 6
 encoder_source: "target_encoder"
 
 # --- Optimization ---
-batch_size: 64
+batch_size: 128
 gradient_accumulation_steps: 1
 learning_rate: 1.0e-3
 weight_decay: 0.00
-warmup_steps: 100
-max_steps: 2500
+warmup_steps: 1500
+max_steps: 15000 # stl-10 is 100k : 128 = 781.25, so 15000 steps is ~5 epochs
 
 # --- Logging / IO ---
 log_every: 100
@@ -38,7 +38,7 @@ wandb_dir: "logs"
 checkpoint_dir: "artifacts/checkpoints/ijepa-stl10-classifier"
 
 # --- Checkpoint loading ---
-from_checkpoint: "artifacts/checkpoints/ijepa-stl10/model_step_30000.pt" # Path to the checkpoint to load, not provided or null means from scratch
+from_checkpoint: "artifacts/checkpoints/ijepa-stl10/model_step_70000.pt" # Path to the checkpoint to load, not provided or null means from scratch
 is_resume: false # If true, resume training from the checkpoint, otherwise just load the model weights and start training from step 0
 
 num_workers: 4

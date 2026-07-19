@@ -1,11 +1,11 @@
 project_name: "i-jepa-imagenet"
-run_name: "i-jepa-imagenet-vit-b-01"
+run_name: "i-jepa-imagenet-vit-b-optimized-01"
 
 # --- Data / patch geometry ---
 in_channels: 3
 image_size: 256
 patch_size: 16
-shuffle_buffer: 10000  # Uses IterableDataset so we need to shuffle the stream of data. This is the size of the buffer used for shuffling.
+shuffle_buffer: 10000
 
 # --- Masking ---
 num_target_blocks: 4
@@ -26,33 +26,31 @@ predictor_num_layers: 6
 predictor_dropout: 0.0
 
 # --- Optimization ---
-batch_size: 64
-gradient_accumulation_steps: 2
-learning_rate: 1.0e-3
+batch_size: 256               # fits in ~35 GB on A100 80 GB with bf16
+gradient_accumulation_steps: 1  # effective batch = 256
+learning_rate: 5.0e-4
 weight_decay: 0.05
-warmup_steps: 50000
-max_steps: 1000000        # ~1.28M/128 = 10k steps per epoch, roughly 100 epochs
+warmup_steps: 50000           # ~10% of max_steps
+max_steps: 500000             # ~1.28M / 256 = 5k steps/epoch × 100 epochs
 
 # --- EMA target encoder momentum, cosine-ramped from start to end ---
 ema_start: 0.996
 ema_end: 1.0
 
 # --- Logging / IO ---
-log_every: 10000
-save_every: 50000
+log_every: 500               # scaled from 10k proportionally
+save_every: 25000             
 
 wandb_dir: "logs"
 checkpoint_dir: "artifacts/checkpoints/ijepa-imagenet"
 
 # --- Checkpoint loading ---
-from_checkpoint: null   # path to resume/warm-start from; null = train from scratch
-is_resume: false        # if true, also restore optimizer, step, and mask RNG
+from_checkpoint: null
+is_resume: false
 
 num_workers: 8
 drop_last: true
-no_epochs: false        # on stream exhaustion, restart the stream and keep going
+no_epochs: false
 
 # --- Data source ---
-# false (default): read the locally cached parquet (run scripts/imagenet_download.py --cache first to use).
-# true: stream from HuggingFace; no download, but caps num_workers at 5 and needs the network every step.
 use_streaming: false

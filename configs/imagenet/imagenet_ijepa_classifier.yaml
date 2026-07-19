@@ -1,5 +1,5 @@
-project_name: "i-jepa-imagenet"
-run_name: "i-jepa-imagenet-vit-b-classifier-01"
+project_name: "i-jepa-imagenet-classifier"
+run_name: "i-jepa-imagenet-vit-b-classifier-extended-1000000"
 
 # --- Data / patch geometry (must match the pretrained encoder) ---
 in_channels: 3
@@ -21,18 +21,18 @@ batch_size: 128
 gradient_accumulation_steps: 1
 learning_rate: 1.0e-3
 weight_decay: 0.0
-warmup_steps: 500
-max_steps: 10000        # ~1.28M / 128 = 10k steps = ~1 epoch of ImageNet train
+warmup_steps: 10000
+max_steps: 100000       # ~1.28M / 128 = 10k steps = ~10 epoch of ImageNet train
 
 # --- Validation ---
 val_max_batches: 50     # Cap the number of validation batches to speed up evaluation; set to null for full validation
 
 # --- Logging / IO ---
 log_every: 500
-save_every: 2000
+save_every: 100000
 
 wandb_dir: "logs"
-checkpoint_dir: "artifacts/checkpoints/ijepa-imagenet-classifier"
+checkpoint_dir: "artifacts/checkpoints/ijepa-imagenet-classifier/step_final/"
 
 # --- Checkpoint loading ---
 from_checkpoint: "artifacts/checkpoints/ijepa-imagenet/model_step_final.pt"

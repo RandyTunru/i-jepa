@@ -1,5 +1,5 @@
 project_name: "i-jepa-stl10"
-run_name: "i-jepa-stl10-06"
+run_name: "i-jepa-stl10-optimized-02"
 
 # --- Data / patch geometry ---
 in_channels: 3
@@ -27,12 +27,12 @@ predictor_num_layers: 3
 predictor_dropout: 0.0
 
 # --- Optimization ---
-batch_size: 64
+batch_size: 128
 gradient_accumulation_steps: 1
 learning_rate: 1.0e-3
-weight_decay: 0.05
-warmup_steps: 3000
-max_steps: 30000
+weight_decay: 0.005
+warmup_steps: 8000
+max_steps: 80000 #stl-10 is 100k : 128 = 781.25 steps per epoch, so 80k steps is ~102 epochs
 
 # --- EMA target encoder momentum, cosine-ramped from start to end ---
 ema_start: 0.996
