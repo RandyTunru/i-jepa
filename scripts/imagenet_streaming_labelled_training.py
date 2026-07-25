@@ -69,7 +69,7 @@ def main(config_path):
             persistent_workers=(config['num_workers'] > 0),
         )
         val_dataloader = DataLoader(
-            val_dataset, batch_size=config['batch_size'], shuffle=False,
+            val_dataset, batch_size=config['batch_size'], shuffle=True,
             num_workers=config['num_workers'], drop_last=False,
             pin_memory=(device.type == 'cuda'),
             persistent_workers=(config['num_workers'] > 0),
