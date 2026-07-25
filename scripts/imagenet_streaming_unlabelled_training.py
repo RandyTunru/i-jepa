@@ -126,6 +126,8 @@ def main(config_path):
     wandb.init(
         project=config['project_name'],
         name=config['run_name'],
+        id=config.get('run_id'),
+        resume="must" if config.get('run_id') else None,
         config=config,
         dir=config['wandb_dir'],
     )
